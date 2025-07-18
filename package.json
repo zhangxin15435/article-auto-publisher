@@ -8,6 +8,10 @@
         "test-publish": "node test-publish.js",
         "publish": "node src/publisher.js",
         "publish-draft": "node src/publisher.js --draft",
+        "table-publish": "node table-publisher.js",
+        "table-publish-draft": "node table-publisher.js --draft",
+        "table-publish-force": "node table-publisher.js --force-all",
+        "create-template": "node templates/create-excel-template.js",
         "test": "jest",
         "dev": "nodemon src/publisher.js",
         "github-publish": "node scripts/github-actions-publish.js",
@@ -30,9 +34,13 @@
     "dependencies": {
         "axios": "^1.10.0",
         "chalk": "^4.1.2",
+        "csv-parser": "^3.2.0",
+        "csv-writer": "^1.6.0",
         "dotenv": "^16.6.1",
+        "fast-csv": "^5.0.2",
         "gray-matter": "^4.0.3",
-        "ora": "^5.4.1"
+        "ora": "^5.4.1",
+        "xlsx": "^0.18.5"
     },
     "devDependencies": {
         "jest": "^29.7.0",

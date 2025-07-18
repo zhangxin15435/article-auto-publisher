@@ -61,15 +61,19 @@ jobs:
           fi
 
       - name: ⚙️ 配置环境变量
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          HASHNODE_API_KEY: ${{ secrets.HASHNODE_API_KEY }}
+          HASHNODE_PUBLICATION_ID: ${{ secrets.HASHNODE_PUBLICATION_ID }}
         run: |
           echo "# 多平台文章发布工具 - 环境变量配置" > .env
           echo "" >> .env
           echo "# DEV.to 配置" >> .env
-          echo "DEVTO_API_KEY=${{ secrets.DEVTO_API_KEY }}" >> .env
+          echo "DEVTO_API_KEY=${DEVTO_API_KEY}" >> .env
           echo "" >> .env
           echo "# Hashnode 配置" >> .env
-          echo "HASHNODE_API_KEY=${{ secrets.HASHNODE_API_KEY }}" >> .env
-          echo "HASHNODE_PUBLICATION_ID=${{ secrets.HASHNODE_PUBLICATION_ID }}" >> .env
+          echo "HASHNODE_API_KEY=${HASHNODE_API_KEY}" >> .env
+          echo "HASHNODE_PUBLICATION_ID=${HASHNODE_PUBLICATION_ID}" >> .env
           echo "" >> .env
           echo "# 其他配置" >> .env
           echo "DEFAULT_PUBLISH_DELAY=3000" >> .env
@@ -79,15 +83,19 @@ jobs:
           echo "LOG_LEVEL=info" >> .env
 
       - name: 🔍 检查平台配置状态
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          HASHNODE_API_KEY: ${{ secrets.HASHNODE_API_KEY }}
+          HASHNODE_PUBLICATION_ID: ${{ secrets.HASHNODE_PUBLICATION_ID }}
         run: |
           echo "🔧 检查API密钥配置状态..."
-          if [ -n "${{ secrets.DEVTO_API_KEY }}" ]; then
+          if [ -n "$DEVTO_API_KEY" ]; then
             echo "✅ DEV.to API密钥已配置"
           else
             echo "❌ DEV.to API密钥未配置"
           fi
           
-          if [ -n "${{ secrets.HASHNODE_API_KEY }}" ] && [ -n "${{ secrets.HASHNODE_PUBLICATION_ID }}" ]; then
+          if [ -n "$HASHNODE_API_KEY" ] && [ -n "$HASHNODE_PUBLICATION_ID" ]; then
             echo "✅ Hashnode API密钥和Publication ID已配置"
           else
             echo "❌ Hashnode配置不完整"
@@ -140,6 +148,10 @@ jobs:
 
       - name: 📊 生成发布报告
         if: always()
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          HASHNODE_API_KEY: ${{ secrets.HASHNODE_API_KEY }}
+          HASHNODE_PUBLICATION_ID: ${{ secrets.HASHNODE_PUBLICATION_ID }}
         run: |
           echo "## 📊 发布报告" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -157,13 +169,13 @@ jobs:
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📈 配置状态" >> $GITHUB_STEP_SUMMARY
-          if [ -n "${{ secrets.DEVTO_API_KEY }}" ]; then
+          if [ -n "$DEVTO_API_KEY" ]; then
             echo "- ✅ DEV.to: 已配置" >> $GITHUB_STEP_SUMMARY
           else
             echo "- ❌ DEV.to: 未配置" >> $GITHUB_STEP_SUMMARY
           fi
           
-          if [ -n "${{ secrets.HASHNODE_API_KEY }}" ] && [ -n "${{ secrets.HASHNODE_PUBLICATION_ID }}" ]; then
+          if [ -n "$HASHNODE_API_KEY" ] && [ -n "$HASHNODE_PUBLICATION_ID" ]; then
             echo "- ✅ Hashnode: 已配置" >> $GITHUB_STEP_SUMMARY
           else
             echo "- ❌ Hashnode: 未配置" >> $GITHUB_STEP_SUMMARY
