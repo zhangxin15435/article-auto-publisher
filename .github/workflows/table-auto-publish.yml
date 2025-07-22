@@ -211,8 +211,20 @@ jobs:
 
       - name: 🚀 执行表格发布
         if: steps.validate_tables.outputs.valid_tables == 'true'
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          HASHNODE_API_KEY: ${{ secrets.HASHNODE_API_KEY }}
+          HASHNODE_PUBLICATION_ID: ${{ secrets.HASHNODE_PUBLICATION_ID }}
         run: |
           echo "🚀 开始表格批量发布..."
+          
+          # 确保dotenv被正确加载
+          echo "// 加载环境变量\nrequire('dotenv').config();" > ensure-dotenv.js
+          node ensure-dotenv.js
+          
+          # 运行环境变量调试脚本
+          echo "🔍 运行环境变量调试脚本..."
+          node scripts/debug-env.js
           
           PUBLISHED_COUNT=0
           FAILED_COUNT=0
@@ -259,11 +271,22 @@ jobs:
               echo "📊 处理表格文件: $table_file"
               echo "────────────────────────────────────────"
               
-              # 执行发布命令
-              FULL_COMMAND="node table-publisher.js $table_file $PUBLISH_ARGS"
-              echo "🔄 执行命令: $FULL_COMMAND"
-              
-              if $FULL_COMMAND; then
+                        # 执行发布命令
+          FULL_COMMAND="node table-publisher.js $table_file $PUBLISH_ARGS"
+          echo "🔄 执行命令: $FULL_COMMAND"
+          
+          # 确保环境变量可用于Node.js脚本
+          export DEVTO_API_KEY="${DEVTO_API_KEY}"
+          export HASHNODE_API_KEY="${HASHNODE_API_KEY}"
+          export HASHNODE_PUBLICATION_ID="${HASHNODE_PUBLICATION_ID}"
+          
+          # 打印环境变量状态（不显示具体值）
+          echo "🔑 环境变量状态:"
+          echo "   DEVTO_API_KEY: $(if [ -n "$DEVTO_API_KEY" ]; then echo "已设置"; else echo "未设置"; fi)"
+          echo "   HASHNODE_API_KEY: $(if [ -n "$HASHNODE_API_KEY" ]; then echo "已设置"; else echo "未设置"; fi)"
+          echo "   HASHNODE_PUBLICATION_ID: $(if [ -n "$HASHNODE_PUBLICATION_ID" ]; then echo "已设置"; else echo "未设置"; fi)"
+          
+          if $FULL_COMMAND; then
                 echo "✅ $table_file 发布成功"
                 PUBLISHED_COUNT=$((PUBLISHED_COUNT + 1))
               else

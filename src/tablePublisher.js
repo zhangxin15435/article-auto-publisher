@@ -308,6 +308,13 @@ class TablePublisher {
         console.log(chalk.yellow('\n🔧 平台配置状态:'));
         console.log(`   DEV.to: ${this.config.devto.enabled ? chalk.green('✅ 已配置') : chalk.red('❌ 未配置')}`);
         console.log(`   Hashnode: ${this.config.hashnode.enabled ? chalk.green('✅ 已配置') : chalk.red('❌ 未配置')}`);
+
+        // 添加更多调试信息
+        console.log(chalk.yellow('\n🔍 环境变量详情:'));
+        console.log(`   DEVTO_API_KEY: ${process.env.DEVTO_API_KEY ? '存在' : '不存在'}`);
+        console.log(`   HASHNODE_API_KEY: ${process.env.HASHNODE_API_KEY ? '存在' : '不存在'}`);
+        console.log(`   HASHNODE_PUBLICATION_ID: ${process.env.HASHNODE_PUBLICATION_ID ? '存在' : '不存在'}`);
+        console.log(`   NODE_ENV: ${process.env.NODE_ENV || '未设置'}`);
     }
 
     /**
