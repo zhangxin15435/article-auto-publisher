@@ -42,26 +42,70 @@ class MediumPublisher {
     }
 
     /**
-     * 获取用户信息
-     */
+ * 获取用户信息
+ */
     async getUserInfo() {
         try {
             console.log(chalk.blue('📡 获取Medium用户信息...'));
 
-            const response = await this.makeRequest('GET', '/me');
+            // 尝试多个端点获取用户信息
+            const endpoints = ['/', '/me', '/dashboard'];
 
-            if (response.success && response.data) {
-                const userMatch = response.data.match(/"id":"([^"]+)"/);
-                const usernameMatch = response.data.match(/"username":"([^"]+)"/);
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await this.makeRequest('GET', endpoint);
 
-                if (userMatch && usernameMatch) {
-                    const userInfo = {
-                        id: userMatch[1],
-                        username: usernameMatch[1]
-                    };
+                    if (response.success && response.data) {
+                        // 尝试不同的用户信息匹配模式
+                        const patterns = [
+                            /"userId":"([^"]+)"/,
+                            /"id":"([^"]+)"/,
+                            /uid=([^;]+)/,
+                            /"uid":"([^"]+)"/
+                        ];
 
-                    console.log(chalk.green('✅ 成功获取用户信息:'), userInfo.username);
-                    return userInfo;
+                        const usernamePatterns = [
+                            /"username":"([^"]+)"/,
+                            /"handle":"([^"]+)"/,
+                            /"name":"([^"]+)"/
+                        ];
+
+                        let userId = null;
+                        let username = null;
+
+                        // 从Cookie中提取uid
+                        const cookieUidMatch = this.config.cookies.match(/uid=([^;]+)/);
+                        if (cookieUidMatch) {
+                            userId = cookieUidMatch[1];
+                        }
+
+                        // 尝试从响应中提取用户名
+                        for (const pattern of usernamePatterns) {
+                            const match = response.data.match(pattern);
+                            if (match) {
+                                username = match[1];
+                                break;
+                            }
+                        }
+
+                        // 如果没有找到用户名，使用默认值
+                        if (!username && userId) {
+                            username = `user_${userId.substring(0, 8)}`;
+                        }
+
+                        if (userId) {
+                            const userInfo = {
+                                id: userId,
+                                username: username || 'Medium用户'
+                            };
+
+                            console.log(chalk.green('✅ 成功获取用户信息:'), userInfo.username);
+                            return userInfo;
+                        }
+                    }
+                } catch (endpointError) {
+                    // 继续尝试下一个端点
+                    continue;
                 }
             }
 
@@ -84,8 +128,18 @@ class MediumPublisher {
 
             console.log(chalk.blue(`📝 开始发布文章到Medium: "${article.title}"`));
 
-            // 获取用户信息
-            const userInfo = await this.getUserInfo();
+            // 从Cookie中直接获取用户信息，避免重复API调用
+            const cookieUidMatch = this.config.cookies.match(/uid=([^;]+)/);
+            if (!cookieUidMatch) {
+                throw new Error('无法从Cookie中提取用户ID');
+            }
+
+            const userInfo = {
+                id: cookieUidMatch[1],
+                username: `user_${cookieUidMatch[1].substring(0, 8)}`
+            };
+
+            console.log(chalk.blue(`📋 使用用户信息: ${userInfo.username} (${userInfo.id})`));
 
             // 获取发布所需的token
             const publishToken = await this.getPublishToken();

@@ -185,6 +185,7 @@ jobs:
           export DEVTO_API_KEY="${DEVTO_API_KEY}"
           export HASHNODE_API_KEY="${HASHNODE_API_KEY}"
           export HASHNODE_PUBLICATION_ID="${HASHNODE_PUBLICATION_ID}"
+          export MEDIUM_COOKIES="${MEDIUM_COOKIES}"
           
           # 执行自动发布脚本
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
@@ -269,6 +270,12 @@ jobs:
             echo "- ❌ **Hashnode**: 未配置" >> $GITHUB_STEP_SUMMARY
           fi
           
+          if [ -n "$MEDIUM_COOKIES" ]; then
+            echo "- ✅ **Medium**: 已配置" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ **Medium**: 未配置" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📂 CSV文件状态" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.check_articles.outputs.found_csv }}" = "true" ]; then
@@ -316,10 +323,11 @@ jobs:
           echo "自动CSV内容发布过程中发生错误，请检查以下项目：" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔍 故障排除清单" >> $GITHUB_STEP_SUMMARY
-          echo "1. **API密钥配置**: 确保在 Settings > Secrets 中正确配置了API密钥" >> $GITHUB_STEP_SUMMARY
+          echo "1. **API密钥配置**: 确保在 Settings > Secrets 中正确配置了认证信息" >> $GITHUB_STEP_SUMMARY
           echo "   - \`DEVTO_API_KEY\`: DEV.to平台的API密钥" >> $GITHUB_STEP_SUMMARY
           echo "   - \`HASHNODE_API_KEY\`: Hashnode平台的API密钥" >> $GITHUB_STEP_SUMMARY
           echo "   - \`HASHNODE_PUBLICATION_ID\`: Hashnode的Publication ID" >> $GITHUB_STEP_SUMMARY
+          echo "   - \`MEDIUM_COOKIES\`: Medium平台的登录Cookie" >> $GITHUB_STEP_SUMMARY
           echo "2. **CSV文件格式**: 确保CSV文件格式正确，包含必需的列" >> $GITHUB_STEP_SUMMARY
           echo "3. **文件编码**: 确保CSV文件使用UTF-8编码" >> $GITHUB_STEP_SUMMARY
           echo "4. **权限设置**: 确保GitHub Token有仓库写入权限" >> $GITHUB_STEP_SUMMARY
