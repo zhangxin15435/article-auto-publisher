@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
+const { parse } = require('csv-parse');
 const XLSX = require('xlsx');
 const { createReadStream } = require('fs');
 
@@ -52,9 +53,19 @@ class TableParser {
     /**
      * 解析CSV文件
      * @param {string} filePath - CSV文件路径
-     * @returns {Promise<Array>} 解析后的数据
+     * @returns {Promise<array>} 文章数组
      */
     async parseCSV(filePath) {
+        // 检查是否包含多行文本（通过检查文件内容）
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const lines = fileContent.split('\n');
+
+        // 如果文件行数明显多于预期的记录数，使用csv-parse
+        if (lines.length > 50) {
+            return this.parseCSVWithMultiline(filePath);
+        }
+
+        // 否则使用原来的csv-parser
         return new Promise((resolve, reject) => {
             const results = [];
 
@@ -74,9 +85,50 @@ class TableParser {
                     console.log(`✅ CSV文件解析完成，共解析 ${results.length} 条记录`);
                     resolve(results);
                 })
-                .on('error', (error) => {
-                    reject(new Error(`CSV文件解析失败: ${error.message}`));
-                });
+                .on('error', reject);
+        });
+    }
+
+    /**
+     * 使用csv-parse解析包含多行文本的CSV文件
+     * @param {string} filePath - CSV文件路径
+     * @returns {Promise<array>} 文章数组
+     */
+    async parseCSVWithMultiline(filePath) {
+        const self = this; // 保存this引用
+        return new Promise((resolve, reject) => {
+            const results = [];
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
+
+            parse(fileContent, {
+                columns: true,
+                skip_empty_lines: true,
+                relax_quotes: true,           // 宽松的引号处理
+                relax_column_count: true,     // 宽松的列数处理
+                trim: true,                   // 自动去除空格
+                cast: (value) => {
+                    // 处理值的转换
+                    return value ? value.trim() : '';
+                }
+            })
+                .on('readable', function () {
+                    let record;
+                    while ((record = this.read()) !== null) {
+                        try {
+                            const article = self.processRow(record);
+                            if (article) {
+                                results.push(article);
+                            }
+                        } catch (error) {
+                            console.warn(`处理行数据时出错:`, error.message);
+                        }
+                    }
+                })
+                .on('end', () => {
+                    console.log(`✅ CSV文件解析完成（多行模式），共解析 ${results.length} 条记录`);
+                    resolve(results);
+                })
+                .on('error', reject);
         });
     }
 
