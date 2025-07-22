@@ -18,6 +18,7 @@ const TableParser = require('../src/utils/tableParser');
 const TableUpdater = require('../src/utils/tableUpdater');
 const { publishToDevTo } = require('../src/publishers/devto');
 const { publishToHashnode } = require('../src/publishers/hashnode');
+const { publishToMedium } = require('../src/publishers/medium');
 
 class AutoCSVPublisher {
     constructor() {
@@ -30,6 +31,10 @@ class AutoCSVPublisher {
                 apiKey: process.env.HASHNODE_API_KEY,
                 publicationId: process.env.HASHNODE_PUBLICATION_ID,
                 enabled: !!process.env.HASHNODE_API_KEY && !!process.env.HASHNODE_PUBLICATION_ID
+            },
+            medium: {
+                cookies: process.env.MEDIUM_COOKIES,
+                enabled: !!process.env.MEDIUM_COOKIES
             }
         };
 
@@ -50,11 +55,15 @@ class AutoCSVPublisher {
         console.log(chalk.yellow('🔧 平台配置状态:'));
         console.log(`   DEV.to: ${this.config.devto.enabled ? chalk.green('✅ 已配置') : chalk.red('❌ 未配置')}`);
         console.log(`   Hashnode: ${this.config.hashnode.enabled ? chalk.green('✅ 已配置') : chalk.red('❌ 未配置')}`);
+        console.log(`   Medium: ${this.config.medium.enabled ? chalk.green('✅ 已配置') : chalk.red('❌ 未配置')}`);
         console.log();
 
-        if (!this.config.devto.enabled && !this.config.hashnode.enabled) {
+        if (!this.config.devto.enabled && !this.config.hashnode.enabled && !this.config.medium.enabled) {
             console.log(chalk.red('❌ 错误: 没有配置任何发布平台'));
-            console.log(chalk.yellow('💡 请在.env文件中配置至少一个平台的API密钥'));
+            console.log(chalk.yellow('💡 请在.env文件中配置至少一个平台的认证信息'));
+            console.log(chalk.yellow('   - DEV.to: DEVTO_API_KEY'));
+            console.log(chalk.yellow('   - Hashnode: HASHNODE_API_KEY + HASHNODE_PUBLICATION_ID'));
+            console.log(chalk.yellow('   - Medium: MEDIUM_COOKIES (使用 npm run extract-medium-cookies 获取)'));
             process.exit(1);
         }
     }
@@ -195,6 +204,22 @@ class AutoCSVPublisher {
                     result = await publishToHashnode(article, this.config.hashnode, { draft: false });
                     break;
 
+                case 'medium':
+                    // 检查是否已在Medium发布
+                    if (article.medium_published &&
+                        article.medium_published !== false &&
+                        article.medium_published !== 'false' &&
+                        article.medium_published !== '否') {
+                        return {
+                            success: false,
+                            platform: 'MEDIUM',
+                            error: '该内容已在Medium发布',
+                            skipped: true
+                        };
+                    }
+                    result = await publishToMedium(article, this.config.medium);
+                    break;
+
                 default:
                     throw new Error(`不支持的平台: ${platform}`);
             }
@@ -233,7 +258,7 @@ class AutoCSVPublisher {
         console.log(chalk.gray(`📁 文件: ${path.basename(filePath)}`));
         console.log('─'.repeat(50));
 
-        const platforms = ['devto', 'hashnode'];
+        const platforms = ['devto', 'hashnode', 'medium'];
         const results = [];
         let publishedToAnyPlatform = false;
 
@@ -248,6 +273,8 @@ class AutoCSVPublisher {
                     article.devto_published = result.url || '是';
                 } else if (platform === 'hashnode') {
                     article.hashnode_published = result.url || '是';
+                } else if (platform === 'medium') {
+                    article.medium_published = result.url || '是';
                 }
             }
 

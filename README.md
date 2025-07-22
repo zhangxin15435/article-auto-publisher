@@ -6,7 +6,7 @@
 
 - 🤖 **自动化发布**: 每天定时自动从CSV文件选择未发布内容进行发布
 - 🗑️ **智能清理**: 发布成功后自动删除已发布内容，避免重复发布
-- 🎯 **多平台支持**: 同时发布到 DEV.to 和 Hashnode
+- 🎯 **多平台支持**: 同时发布到 DEV.to、Hashnode 和 Medium
 - ⏰ **定时执行**: 每天6点、18点、12点、24点自动执行
 - 📊 **状态追踪**: 智能跟踪发布状态，避免重复发布
 
@@ -37,6 +37,9 @@ DEVTO_API_KEY=your_devto_api_key_here
 # Hashnode 配置  
 HASHNODE_API_KEY=your_hashnode_api_key_here
 HASHNODE_PUBLICATION_ID=your_publication_id_here
+
+# Medium 配置
+MEDIUM_COOKIES=your_medium_cookies_here
 ```
 
 #### 获取API密钥
@@ -52,13 +55,18 @@ HASHNODE_PUBLICATION_ID=your_publication_id_here
 3. 生成Personal Access Token
 4. 获取Publication ID（从博客URL中提取）
 
+**Medium Cookies**：
+1. 登录 [Medium](https://medium.com)
+2. 运行Cookie提取工具：`npm run extract-medium-cookies`
+3. 按照工具指导从浏览器提取Cookies
+
 ### 3. 准备CSV文件
 
 在 `articles` 目录下创建CSV文件，格式如下：
 
 ```csv
-title,description,tags,content,devto_published,hashnode_published
-"文章标题","文章描述","tag1,tag2,tag3","# 文章内容\n\n这里是正文...",false,false
+title,description,tags,content,devto_published,hashnode_published,medium_published
+"文章标题","文章描述","tag1,tag2,tag3","# 文章内容\n\n这里是正文...",false,false,false
 ```
 
 **必需字段**：
@@ -88,6 +96,7 @@ npm run auto-csv-publish
      - `DEVTO_API_KEY`: 你的DEV.to API密钥
      - `HASHNODE_API_KEY`: 你的Hashnode API密钥
      - `HASHNODE_PUBLICATION_ID`: 你的Hashnode Publication ID
+     - `MEDIUM_COOKIES`: 你的Medium登录Cookies
 
 3. **启用GitHub Actions**：
    - 确保在 `Settings → Actions → General` 中启用了Actions

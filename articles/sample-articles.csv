@@ -1,4 +1,4 @@
-title,description,tags,content,devto_published,hashnode_published
+title,description,tags,content,devto_published,hashnode_published,medium_published
 "GitHub Actions自动化发布最佳实践","深入了解如何使用GitHub Actions实现文章的自动发布","github-actions,automation,ci-cd","# GitHub Actions自动化发布最佳实践
 
 ## 什么是GitHub Actions？
@@ -35,7 +35,7 @@ on:
 
 ## 总结
 
-GitHub Actions为内容发布提供了强大的自动化能力，帮助创作者专注于内容创作。",false,false
+GitHub Actions为内容发布提供了强大的自动化能力，帮助创作者专注于内容创作。",false,false,false
 "现代JavaScript异步编程指南","掌握Promise、async/await等异步编程技术","javascript,async,programming","# 现代JavaScript异步编程指南
 
 ## 异步编程的重要性
@@ -163,4 +163,4 @@ services:
 3. 安全配置
 4. 日志管理
 
-Docker容器化技术已成为现代应用部署的标准，掌握这项技术对开发者来说至关重要。",false,false 
+Docker容器化技术已成为现代应用部署的标准，掌握这项技术对开发者来说至关重要。",false,false,false 
