@@ -4,23 +4,14 @@
     "description": "自动发布文章到多个平台的工具",
     "main": "index.js",
     "scripts": {
-        "setup": "node manual-setup.js",
-        "test-publish": "node test-publish.js",
         "publish": "node src/publisher.js",
         "publish-draft": "node src/publisher.js --draft",
-        "table-publish": "node table-publisher.js",
-        "table-publish-draft": "node table-publisher.js --draft",
-        "table-publish-force": "node table-publisher.js --force-all",
+        "auto-csv-publish": "node scripts/auto-csv-publisher.js",
         "create-template": "node templates/create-excel-template.js",
-        "create-chinese-template": "node templates/create-chinese-excel-template.js",
         "test": "jest",
-        "dev": "nodemon src/publisher.js",
-        "github-publish": "node scripts/github-actions-publish.js",
-        "github-publish-draft": "node scripts/github-actions-publish.js --draft",
         "github-test": "node scripts/test-github-actions.js",
         "github-setup": "node scripts/setup-github-secrets.js",
-        "github-extract": "node scripts/extract-github-secrets.js",
-        "demo-parsing": "node scripts/demo-article-parsing.js"
+        "github-extract": "node scripts/extract-github-secrets.js"
     },
     "keywords": [
         "blog",

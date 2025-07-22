@@ -1,395 +1,214 @@
-# 多平台文章自动发布工具
+# 🤖 自动CSV内容发布工具
 
-一个支持将文章自动发布到多个技术平台的命令行工具，支持 Hashnode、DEV.to、Medium（限制）和 Hacker News（半自动）。
+一个支持从CSV文件自动发布文章到多个技术平台的工具，支持 DEV.to 和 Hashnode 平台。
 
-## 🚀 功能特性
+## ✨ 核心功能
 
-- ✅ **多平台支持**: 同时发布到多个平台
-- ✅ **Markdown支持**: 原生支持Markdown格式和Front Matter
-- ✅ **表格批量发布**: 支持CSV/Excel文件批量管理文章 🆕
-- ✅ **GitHub Actions自动化**: 支持定时和手动触发的全自动发布 🆕
-- ✅ **智能发布**: 自动检测重复文章，支持更新已有文章
-- ✅ **批量处理**: 支持批量发布多个文章
-- ✅ **状态追踪**: 自动追踪各平台发布状态 🆕
-- ✅ **错误处理**: 完善的错误处理和重试机制
-- ✅ **中文支持**: 完整的中文界面和文档
+- 🤖 **自动化发布**: 每天定时自动从CSV文件选择未发布内容进行发布
+- 🗑️ **智能清理**: 发布成功后自动删除已发布内容，避免重复发布
+- 🎯 **多平台支持**: 同时发布到 DEV.to 和 Hashnode
+- ⏰ **定时执行**: 每天6点、18点、12点、24点自动执行
+- 📊 **状态追踪**: 智能跟踪发布状态，避免重复发布
 
-## 📋 平台支持状态
-
-| 平台 | 状态 | 支持功能 | 获取API密钥 |
-|------|------|----------|-------------|
-| **DEV.to** | ✅ 完全支持 | 发布、更新、草稿 | [获取API Key](https://dev.to/settings/account) |
-| **Hashnode** | ✅ 完全支持 | 发布、更新、草稿 | [获取API Key](https://hashnode.com/settings/developer) |
-| **Medium** | ❌ 新用户不可用 | 不再支持新集成 | 已停止新用户申请 |
-| **Hacker News** | ⚠️ 半自动 | 生成提交链接 | 需要账号密码 |
-
-## 🛠️ 安装和配置
+## 🚀 快速开始
 
 ### 1. 安装依赖
 
 ```bash
-# 克隆项目
-git clone <repository-url>
-cd multi-platform-article-publisher
+# 使用pnpm安装依赖（推荐）
+pnpm install
 
-# 安装依赖
+# 或使用npm
 npm install
-
-# 可选：如果需要Hacker News浏览器自动化
-npm install puppeteer
 ```
 
-### 2. 配置环境变量
+### 2. 配置API密钥
 
+复制环境变量模板：
 ```bash
-# 复制环境变量模板
 cp env.example .env
-
-# 编辑环境变量文件
-nano .env
 ```
 
-### 3. 获取API密钥
+编辑 `.env` 文件，添加你的API密钥：
+```env
+# DEV.to 配置
+DEVTO_API_KEY=your_devto_api_key_here
 
-#### DEV.to API密钥
+# Hashnode 配置  
+HASHNODE_API_KEY=your_hashnode_api_key_here
+HASHNODE_PUBLICATION_ID=your_publication_id_here
+```
+
+#### 获取API密钥
+
+**DEV.to API密钥**：
 1. 登录 [DEV.to](https://dev.to)
 2. 前往 `Settings → Account → API Keys`
 3. 生成新的API Key
-4. 将密钥添加到 `.env` 文件
 
-#### Hashnode API密钥
+**Hashnode API密钥**：
 1. 登录 [Hashnode](https://hashnode.com)
 2. 前往 `Settings → Developer → API Keys`
 3. 生成Personal Access Token
 4. 获取Publication ID（从博客URL中提取）
-5. 将密钥和ID添加到 `.env` 文件
+
+### 3. 准备CSV文件
+
+在 `articles` 目录下创建CSV文件，格式如下：
+
+```csv
+title,description,tags,content,devto_published,hashnode_published
+"文章标题","文章描述","tag1,tag2,tag3","# 文章内容\n\n这里是正文...",false,false
+```
+
+**必需字段**：
+- `title`: 文章标题
+- `content`: 文章内容（支持Markdown格式）
+
+**可选字段**：
+- `description`: 文章描述
+- `tags`: 标签（逗号分隔）
+- `devto_published`: DEV.to发布状态
+- `hashnode_published`: Hashnode发布状态
+
+### 4. 本地测试
+
+```bash
+# 手动执行一次发布
+npm run auto-csv-publish
+```
+
+### 5. 配置GitHub Actions自动发布
+
+1. **上传项目到GitHub仓库**
+
+2. **配置GitHub Secrets**：
+   - 前往仓库的 `Settings → Secrets and variables → Actions`
+   - 添加以下Secrets：
+     - `DEVTO_API_KEY`: 你的DEV.to API密钥
+     - `HASHNODE_API_KEY`: 你的Hashnode API密钥
+     - `HASHNODE_PUBLICATION_ID`: 你的Hashnode Publication ID
+
+3. **启用GitHub Actions**：
+   - 确保在 `Settings → Actions → General` 中启用了Actions
+   - 选择 "Read and write permissions"
+
+4. **自动发布时间**：
+   - 每天北京时间 6:00、18:00、12:00、24:00 自动执行
+   - 每次执行会选择一篇未发布的内容进行发布
+   - 发布成功后自动删除该条记录
+
+## 📖 使用方法
+
+### 本地使用
+
+```bash
+# 自动发布CSV中的未发布内容
+npm run auto-csv-publish
+
+# 传统Markdown文件发布
+npm run publish articles/my-article.md
+npm run publish-draft articles/my-article.md
+
+# 生成CSV模板
+npm run create-template
+```
+
+### GitHub Actions使用
+
+1. **自动执行**: 系统会在设定时间自动运行，无需手动操作
+
+2. **手动触发**: 
+   - 前往仓库的 `Actions` 页面
+   - 选择 "🤖 自动CSV内容发布" 工作流
+   - 点击 "Run workflow"
+   - 可选择测试模式进行调试
+
+3. **查看结果**: 
+   - 在Actions页面查看执行日志
+   - 系统会生成详细的发布报告
+   - 成功发布的内容会自动从CSV文件中删除
 
 ## 📝 文章格式
 
-### 标准Markdown + Front Matter格式
+### CSV格式
+```csv
+title,description,tags,content,devto_published,hashnode_published
+"JavaScript异步编程","深入理解Promise和async/await","javascript,async","# JavaScript异步编程\n\n## Promise基础\n\n...",false,false
+```
 
+### Markdown格式（传统方式）
 ```markdown
 ---
 title: "你的文章标题"
-description: "文章描述，会用作摘要"
-tags: ["javascript", "webdev", "tutorial"]
+description: "文章描述"
+tags: ["javascript", "tutorial"]
 published: true
-cover_image: "https://example.com/cover.jpg"
-canonical_url: "https://yourblog.com/article"
-series: "JavaScript进阶系列"
 ---
 
 # 文章内容
 
 这里是你的Markdown内容...
-
-## 章节标题
-
-更多内容...
 ```
 
-### Front Matter字段说明
-
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `title` | string | ✅ | 文章标题 |
-| `description` | string | ❌ | 文章描述/摘要 |
-| `tags` | array/string | ❌ | 标签列表 |
-| `published` | boolean | ❌ | 是否发布（默认true） |
-| `cover_image` | string | ❌ | 封面图片URL |
-| `canonical_url` | string | ❌ | 原文链接 |
-| `series` | string | ❌ | 系列名称 |
-
-## 🚀 使用方法
-
-### 方式一：传统Markdown文件发布
-
-#### 单篇文章发布
-
-```bash
-# 发布单篇文章
-node src/publisher.js articles/my-article.md
-
-# 发布为草稿
-node src/publisher.js articles/my-article.md --draft
-
-# 使用npm script
-npm run publish articles/my-article.md
-```
-
-#### 批量发布
-
-```bash
-# 发布目录中的所有文章
-node src/publisher.js articles/
-
-# 批量发布时添加延迟（避免API限制）
-node src/publisher.js articles/ --delay 3000
-```
-
-### 方式二：表格批量发布 🆕
-
-支持通过CSV或Excel文件批量管理和发布文章。
-
-#### 创建表格模板
-
-```bash
-# 生成英文Excel模板文件
-npm run create-template
-
-# 生成中文Excel模板文件 🆕
-npm run create-chinese-template
-
-# 模板位置：templates/articles-template.xlsx
-# 中文模板位置：templates/chinese-articles-template.xlsx
-```
-
-#### 使用表格发布
-
-```bash
-# 使用英文模板
-npm run table-publish articles.csv
-
-# 使用中文模板（支持中文列名） 🆕
-npm run table-publish chinese-articles.csv
-```
-
-**支持的中文列名：**
-- 主题（文章标题）
-- 发布（是否发布）
-- 提出人（作者）
-- 发布内容（Markdown内容）
-- 格式转换（是否转换）
-- markdown格标签（标签）
-- 图片（封面图）
-- 渠道&账号（发布平台）
-- 发布完成（完成状态）
-
-详细使用说明：
-- [表格发布使用指南](./表格发布使用指南.md)
-- [中文表格模板使用指南](./中文表格模板使用指南.md) 🆕
-
-#### 表格发布命令
-
-```bash
-# 基本发布（发布未发布的文章）
-npm run table-publish articles.csv
-
-# 草稿模式发布（推荐先测试）
-npm run table-publish-draft articles.xlsx
-
-# 强制发布所有文章
-npm run table-publish-force articles.csv
-
-# 高级选项
-node table-publisher.js articles.csv --draft --yes --force-all
-```
-
-#### 表格格式要求
-
-| 列名 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `title` | 文本 | ✅ | 文章标题 |
-| `description` | 文本 | ❌ | 文章描述 |
-| `tags` | 文本 | ❌ | 标签列表（逗号分隔） |
-| `content` | 文本 | ❌ | 文章内容（Markdown） |
-| `file_path` | 文本 | ❌ | 外部Markdown文件路径 |
-| `devto_published` | 布尔值/URL | ❌ | DEV.to发布状态 |
-| `hashnode_published` | 布尔值/URL | ❌ | Hashnode发布状态 |
-
-📚 **详细说明**: 查看 [表格发布使用指南.md](表格发布使用指南.md)
-
-### 方式三：GitHub Actions 自动化发布 🆕
-
-#### 配置自动化
-
-```bash
-# 1. 配置GitHub Secrets
-# Settings > Secrets and variables > Actions
-# 添加: DEVTO_API_KEY, HASHNODE_API_KEY, HASHNODE_PUBLICATION_ID
-
-# 2. 启用Actions权限
-# Settings > Actions > General > Workflow permissions
-# 选择: Read and write permissions
-```
-
-#### 自动化功能
-
-- **⏰ 定时发布**: 每天自动检查和发布（北京时间 9:00, 15:00, 21:00）
-- **🔄 手动触发**: 支持在Actions页面手动触发并配置参数
-- **📊 状态更新**: 发布后自动更新表格状态并提交到仓库
-- **📈 详细报告**: 每次执行后生成完整的发布报告
-
-#### 使用方法
-
-```bash
-# 在GitHub仓库页面
-1. 前往 Actions 页面
-2. 选择 "📊 表格批量自动发布"
-3. 点击 "Run workflow"
-4. 配置参数并执行
-
-# 支持的参数
-- 指定表格文件: articles.csv
-- 发布平台: devto,hashnode  
-- 草稿模式: true/false
-- 强制发布: true/false
-```
-
-🤖 **详细配置**: 查看 [GitHub Actions表格发布自动化指南.md](GitHub_Actions_表格发布自动化指南.md)
-
-### 高级选项
-
-```bash
-# 所有可用选项
-node src/publisher.js <文章路径> [选项]
-
-选项:
-  --delay <ms>     批量发布时的延迟时间（毫秒）
-  --draft          发布为草稿
-  --force-new      强制创建新文章（不检查重复）
-  --debug          启用调试模式
-```
-
-## 📊 发布结果示例
+## 🔧 项目结构
 
 ```
-✓ 文章解析成功: JavaScript异步编程完全指南
-
-✓ DEV.to 发布成功: https://dev.to/username/javascript-async-guide
-✓ Hashnode 发布成功: https://yourblog.hashnode.dev/javascript-async-guide
-⚠ 跳过 Hacker News（未配置API密钥）
-
-📊 发布结果摘要:
-══════════════════════════════════════════════════
-✅ 成功发布:
-   • DEV.to: https://dev.to/username/javascript-async-guide
-   • Hashnode: https://yourblog.hashnode.dev/javascript-async-guide
-
-总计: 2 成功, 0 失败
-
-🎉 所有发布任务已完成！
-```
-
-## 🔧 开发和扩展
-
-### 项目结构
-
-```
-example-implementation/
+article-auto-publisher/
+├── .github/workflows/
+│   └── auto-csv-publish.yml      # GitHub Actions工作流
+├── articles/                     # CSV文件存放目录
+│   └── sample-articles.csv       # 示例文章
+├── scripts/
+│   ├── auto-csv-publisher.js     # 自动CSV发布脚本
+│   ├── github-actions-publish.js # GitHub Actions发布脚本
+│   └── setup-github-secrets.js   # GitHub Secrets配置指南
 ├── src/
-│   ├── publisher.js              # 主发布器
-│   ├── tablePublisher.js         # 表格发布器 🆕
-│   ├── utils/                    # 工具模块 🆕
-│   │   ├── tableParser.js        # 表格解析器
-│   │   └── tableUpdater.js       # 表格更新器
-│   └── publishers/
-│       ├── devto.js              # DEV.to发布器
-│       ├── hashnode.js           # Hashnode发布器
-│       └── hackernews.js         # Hacker News发布器
-├── templates/                    # 表格模板 🆕
-│   ├── articles-template.csv
-│   └── articles-template.xlsx
-├── articles/                     # 示例文章目录
-├── table-publisher.js            # 表格发布入口 🆕
-├── package.json                  # 项目依赖
+│   ├── publisher.js              # 传统Markdown发布器
+│   ├── utils/                    # 工具模块
+│   └── publishers/               # 平台发布器
+├── templates/
+│   └── create-excel-template.js  # 模板生成器
+├── package.json                  # 项目配置
 ├── env.example                   # 环境变量模板
 └── README.md                     # 项目文档
 ```
 
-### 添加新平台支持
+## 🎯 工作流程
 
-1. 在 `src/publishers/` 中创建新的平台发布器
-2. 实现标准的发布接口：
-   ```javascript
-   async function publishToPlatform(article, config, options) {
-     // 实现发布逻辑
-     return {
-       success: true,
-       id: 'article_id',
-       url: 'article_url',
-       platform: 'Platform Name',
-       data: {}
-     };
-   }
-   ```
-3. 在主发布器中注册新平台
+1. **内容准备**: 将文章内容添加到CSV文件中
+2. **自动检测**: GitHub Actions定时扫描CSV文件
+3. **选择发布**: 自动选择第一篇未发布的内容
+4. **多平台发布**: 同时发布到DEV.to和Hashnode
+5. **状态更新**: 记录发布状态和链接
+6. **自动清理**: 删除已发布的内容记录
+7. **提交变更**: 自动提交更新后的CSV文件
 
-### API限制和最佳实践
+## 🛠️ 高级配置
 
-| 平台 | 请求限制 | 建议延迟 | 注意事项 |
-|------|----------|----------|----------|
-| DEV.to | 无官方限制 | 1-2秒 | 注意内容质量 |
-| Hashnode | 无官方限制 | 1-2秒 | GraphQL查询复杂度 |
-| Medium | - | - | 新用户不可用 |
-| Hacker News | - | - | 需要手动或自动化 |
+### 自定义发布时间
 
-## 🧪 测试功能
-
-### 测试表格发布功能
-
-```bash
-# 运行表格功能验证测试
-node test-table-validation.js
-
-# 测试特定表格文件
-node table-publisher.js test-table.csv --draft --yes
+编辑 `.github/workflows/auto-csv-publish.yml` 中的cron表达式：
+```yaml
+schedule:
+  - cron: '0 22,10,4,16 * * *'  # UTC时间
 ```
 
-## ⚠️ 注意事项
+### 仅发布到特定平台
 
-### Medium平台
-- Medium已停止为新用户提供Integration Token
-- 现有用户的token仍可继续使用
-- 建议寻找替代方案或手动发布
+修改脚本中的平台配置，或在API密钥中只配置需要的平台。
 
-### Hacker News平台
-- 没有官方API支持文章提交
-- 提供了浏览器自动化方案（需要Puppeteer）
-- 建议使用生成的提交链接手动提交
+## ❓ 故障排除
 
-### 内容质量
-- 确保文章内容原创且高质量
-- 不同平台的受众特点不同，适当调整内容
-- 遵守各平台的社区规则和发布指南
+1. **API密钥问题**: 确保在GitHub Secrets中正确配置了API密钥
+2. **CSV格式错误**: 确保CSV文件包含必需的 `title` 和 `content` 列
+3. **权限问题**: 确保GitHub Token有仓库写入权限
+4. **编码问题**: 确保CSV文件使用UTF-8编码
 
-### 表格发布注意事项 🆕
-- 确保表格文件使用UTF-8编码
-- 支持中英文列名
-- 系统会自动备份原始文件
-- 建议先用草稿模式测试
+## 📜 许可证
 
-## 🔗 相关资源
-
-- [表格发布使用指南](./表格发布使用指南.md)
-- [中文表格模板使用指南](./中文表格模板使用指南.md) 🆕
-- [GitHub Actions 表格上传指南](./GitHub_Actions_表格上传指南.md) 🆕
-- [GitHub Actions 表格发布自动化指南](./GitHub_Actions_表格发布自动化指南.md)
-- [GitHub Actions 快速开始示例](./GitHub_Actions_快速开始示例.md)
-- [GitHub Actions 语法说明](./GitHub_Actions_语法说明.md)
-- [一键发布指南](./一键发布指南.md)
-- [文章格式解析说明](./文章格式解析说明.md)
-- [DEV.to API文档](https://developers.forem.com/api/)
-- [Hashnode API文档](https://apidocs.hashnode.com/)
-- [POSSE概念介绍](https://indieweb.org/POSSE)
-- [GitHub Actions官方文档](https://docs.github.com/en/actions)
-
-## 📄 许可证
-
-MIT License - 详见 [LICENSE](LICENSE) 文件
-
-## 🤝 贡献
-
-欢迎提交 Issues 和 Pull Requests！
-
-## 📞 支持
-
-如果遇到问题，请：
-1. 查看文档和FAQ
-2. 运行测试验证功能: `node test-table-validation.js`
-3. 搜索已有的Issues
-4. 创建新的Issue并提供详细信息
+MIT License
 
 ---
 
-**Happy Publishing! 🚀** 
+**让内容发布变得简单自动！** 🚀 

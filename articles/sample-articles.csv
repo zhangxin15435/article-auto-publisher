@@ -1,0 +1,166 @@
+title,description,tags,content,devto_published,hashnode_published
+"GitHub Actions自动化发布最佳实践","深入了解如何使用GitHub Actions实现文章的自动发布","github-actions,automation,ci-cd","# GitHub Actions自动化发布最佳实践
+
+## 什么是GitHub Actions？
+
+GitHub Actions是GitHub提供的CI/CD平台，允许开发者在代码仓库中直接定义工作流。
+
+## 核心优势
+
+1. **集成性强**: 与GitHub无缝集成
+2. **配置简单**: 使用YAML配置文件
+3. **社区支持**: 丰富的Action市场
+
+## 实战应用
+
+### 自动发布文章
+
+通过GitHub Actions，我们可以实现：
+- 定时自动发布
+- 多平台同步
+- 内容管理自动化
+
+```yaml
+name: 自动发布
+on:
+  schedule:
+    - cron: '0 8 * * *'
+```
+
+## 最佳实践
+
+1. 使用Secrets管理敏感信息
+2. 合理设置触发条件
+3. 添加错误处理机制
+
+## 总结
+
+GitHub Actions为内容发布提供了强大的自动化能力，帮助创作者专注于内容创作。",false,false
+"现代JavaScript异步编程指南","掌握Promise、async/await等异步编程技术","javascript,async,programming","# 现代JavaScript异步编程指南
+
+## 异步编程的重要性
+
+在现代Web开发中，异步编程是处理网络请求、文件读取等操作的关键技术。
+
+## Promise基础
+
+Promise是JavaScript中处理异步操作的重要工具：
+
+```javascript
+const fetchData = () => {
+  return new Promise((resolve, reject) => {
+    // 异步操作
+    setTimeout(() => {
+      resolve('数据获取成功');
+    }, 1000);
+  });
+};
+```
+
+## async/await语法
+
+更简洁的异步代码写法：
+
+```javascript
+async function getData() {
+  try {
+    const result = await fetchData();
+    console.log(result);
+  } catch (error) {
+    console.error('错误:', error);
+  }
+}
+```
+
+## 并发处理
+
+使用Promise.all处理多个异步操作：
+
+```javascript
+const results = await Promise.all([
+  fetchData1(),
+  fetchData2(),
+  fetchData3()
+]);
+```
+
+## 错误处理
+
+1. try-catch块
+2. Promise.catch()
+3. 全局错误处理
+
+## 性能优化
+
+- 避免回调地狱
+- 合理使用并发
+- 实现超时机制
+
+异步编程是现代JavaScript开发的核心技能，掌握这些技术将大大提升开发效率。",false,false
+"Docker容器化部署实战","从零开始学习Docker容器化技术","docker,deployment,devops","# Docker容器化部署实战
+
+## Docker简介
+
+Docker是一个开源的容器化平台，让应用程序在任何环境中都能一致运行。
+
+## 核心概念
+
+### 镜像(Image)
+应用程序的快照，包含运行所需的所有文件。
+
+### 容器(Container)
+镜像的运行实例，轻量级的虚拟化环境。
+
+## 基础命令
+
+```bash
+# 拉取镜像
+docker pull nginx
+
+# 运行容器
+docker run -d -p 80:80 nginx
+
+# 查看容器
+docker ps
+
+# 停止容器
+docker stop container_id
+```
+
+## Dockerfile编写
+
+```dockerfile
+FROM node:16
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD [""npm"", ""start""]
+```
+
+## Docker Compose
+
+管理多容器应用：
+
+```yaml
+version: '3'
+services:
+  web:
+    build: .
+    ports:
+      - ""3000:3000""
+  db:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: password
+```
+
+## 最佳实践
+
+1. 使用多阶段构建
+2. 最小化镜像体积
+3. 安全配置
+4. 日志管理
+
+Docker容器化技术已成为现代应用部署的标准，掌握这项技术对开发者来说至关重要。",false,false 
