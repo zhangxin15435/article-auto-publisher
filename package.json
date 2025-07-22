@@ -12,6 +12,7 @@
         "table-publish-draft": "node table-publisher.js --draft",
         "table-publish-force": "node table-publisher.js --force-all",
         "create-template": "node templates/create-excel-template.js",
+        "create-chinese-template": "node templates/create-chinese-excel-template.js",
         "test": "jest",
         "dev": "nodemon src/publisher.js",
         "github-publish": "node scripts/github-actions-publish.js",

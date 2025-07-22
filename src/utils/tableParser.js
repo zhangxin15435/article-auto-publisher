@@ -12,17 +12,21 @@ class TableParser {
     constructor() {
         // 必需的列名映射（支持中英文）
         this.requiredColumns = {
-            title: ['title', '标题', 'Title', '文章标题'],
-            content: ['content', '内容', 'Content', '文章内容', 'body', 'markdown'],
+            title: ['title', '标题', 'Title', '文章标题', '主题'],
+            content: ['content', '内容', 'Content', '文章内容', 'body', 'markdown', '发布内容'],
             description: ['description', '描述', 'Description', '文章描述', 'summary', '摘要'],
-            tags: ['tags', '标签', 'Tags', '标签列表'],
-            published: ['published', '发布状态', 'Published', '是否发布', 'status', '状态'],
+            tags: ['tags', '标签', 'Tags', '标签列表', 'markdown格标签'],
+            published: ['published', '发布状态', 'Published', '是否发布', 'status', '状态', '发布'],
             cover_image: ['cover_image', '封面图片', 'Cover Image', 'coverImage', 'image', '图片'],
             canonical_url: ['canonical_url', '原文链接', 'Canonical URL', 'canonicalUrl', 'url', '链接'],
             series: ['series', '系列', 'Series', '系列名称'],
             file_path: ['file_path', '文件路径', 'File Path', 'filePath', 'path', '路径'],
             platform_devto: ['devto_published', 'devto_状态', 'devto_url', 'DevTo Published', 'dev_to'],
-            platform_hashnode: ['hashnode_published', 'hashnode_状态', 'hashnode_url', 'Hashnode Published']
+            platform_hashnode: ['hashnode_published', 'hashnode_状态', 'hashnode_url', 'Hashnode Published'],
+            author: ['author', '作者', 'Author', '提出人'],
+            format_conversion: ['format_conversion', '格式转换', 'Format Conversion'],
+            channels: ['channels', '渠道', '渠道&账号', 'Channels'],
+            publish_complete: ['publish_complete', '发布完成', 'Publish Complete', '完成状态']
         };
     }
 
@@ -142,6 +146,12 @@ class TableParser {
             canonicalUrl: this.cleanValue(row[columns.canonical_url]) || undefined,
             series: this.cleanValue(row[columns.series]) || undefined,
             filePath: this.cleanValue(row[columns.file_path]) || undefined,
+
+            // 新增字段
+            author: this.cleanValue(row[columns.author]) || undefined,
+            formatConversion: this.cleanValue(row[columns.format_conversion]) || undefined,
+            channels: this.cleanValue(row[columns.channels]) || undefined,
+            publishComplete: this.parseBoolean(row[columns.publish_complete], false),
 
             // 平台发布状态
             platformStatus: {

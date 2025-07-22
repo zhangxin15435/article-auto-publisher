@@ -180,6 +180,15 @@ class TableUpdater {
                 }
             }
 
+            // 更新发布完成状态
+            if (columns.publish_complete && article.publishResults) {
+                const allPlatformsPublished = Object.values(article.publishResults)
+                    .every(result => result.success);
+                if (allPlatformsPublished) {
+                    row[columns.publish_complete] = '是';
+                }
+            }
+
             // 更新最后发布时间（如果存在该列）
             const lastPublishedColumn = this.findColumn(headers, [
                 'last_published', '最后发布时间', 'Last Published', 'updated_at'

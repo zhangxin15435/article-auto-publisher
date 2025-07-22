@@ -129,15 +129,45 @@ node src/publisher.js articles/ --delay 3000
 
 ### 方式二：表格批量发布 🆕
 
+支持通过CSV或Excel文件批量管理和发布文章。
+
 #### 创建表格模板
 
 ```bash
-# 生成Excel模板文件
+# 生成英文Excel模板文件
 npm run create-template
 
+# 生成中文Excel模板文件 🆕
+npm run create-chinese-template
+
 # 模板位置：templates/articles-template.xlsx
-# 模板位置：templates/articles-template.csv
+# 中文模板位置：templates/chinese-articles-template.xlsx
 ```
+
+#### 使用表格发布
+
+```bash
+# 使用英文模板
+npm run table-publish articles.csv
+
+# 使用中文模板（支持中文列名） 🆕
+npm run table-publish chinese-articles.csv
+```
+
+**支持的中文列名：**
+- 主题（文章标题）
+- 发布（是否发布）
+- 提出人（作者）
+- 发布内容（Markdown内容）
+- 格式转换（是否转换）
+- markdown格标签（标签）
+- 图片（封面图）
+- 渠道&账号（发布平台）
+- 发布完成（完成状态）
+
+详细使用说明：
+- [表格发布使用指南](./表格发布使用指南.md)
+- [中文表格模板使用指南](./中文表格模板使用指南.md) 🆕
 
 #### 表格发布命令
 
@@ -331,11 +361,16 @@ node table-publisher.js test-table.csv --draft --yes
 
 ## 🔗 相关资源
 
+- [表格发布使用指南](./表格发布使用指南.md)
+- [中文表格模板使用指南](./中文表格模板使用指南.md) 🆕
+- [GitHub Actions 表格上传指南](./GitHub_Actions_表格上传指南.md) 🆕
+- [GitHub Actions 表格发布自动化指南](./GitHub_Actions_表格发布自动化指南.md)
+- [GitHub Actions 快速开始示例](./GitHub_Actions_快速开始示例.md)
+- [GitHub Actions 语法说明](./GitHub_Actions_语法说明.md)
+- [一键发布指南](./一键发布指南.md)
+- [文章格式解析说明](./文章格式解析说明.md)
 - [DEV.to API文档](https://developers.forem.com/api/)
 - [Hashnode API文档](https://apidocs.hashnode.com/)
-- [表格发布使用指南](表格发布使用指南.md) 🆕
-- [GitHub Actions表格发布自动化指南](GitHub_Actions_表格发布自动化指南.md) 🆕
-- [GitHub Actions语法说明](GitHub_Actions_语法说明.md) 🆕
 - [POSSE概念介绍](https://indieweb.org/POSSE)
 - [GitHub Actions官方文档](https://docs.github.com/en/actions)
 
