@@ -42,6 +42,223 @@ class TableUpdater {
     }
 
     /**
+     * 更新表格文件，支持删除已发布的记录
+     * @param {string} filePath - 表格文件路径
+     * @param {Array} articles - 要保留的文章数组（已删除发布成功的记录）
+     * @param {boolean} createBackup - 是否创建备份文件
+     * @returns {Promise<object>} 更新结果
+     */
+    async updateTableFile(filePath, articles, createBackup = true) {
+        try {
+            console.log(`📝 更新表格文件: ${path.basename(filePath)}`);
+            
+            // 创建备份
+            if (createBackup) {
+                await this.createBackup(filePath);
+            }
+
+            const ext = path.extname(filePath).toLowerCase();
+
+            switch (ext) {
+                case '.csv':
+                    return await this.rewriteCSV(filePath, articles);
+                case '.xlsx':
+                case '.xls':
+                    return await this.rewriteExcel(filePath, articles);
+                default:
+                    throw new Error(`不支持的文件格式: ${ext}`);
+            }
+        } catch (error) {
+            throw new Error(`更新表格文件失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 重写CSV文件（用于删除已发布记录）
+     * @param {string} filePath - CSV文件路径
+     * @param {Array} articles - 要保留的文章数组
+     * @returns {Promise<object>} 更新结果
+     */
+    async rewriteCSV(filePath, articles) {
+        try {
+            // 读取原始文件获取表头
+            const originalContent = await fs.readFile(filePath, 'utf8');
+            const lines = originalContent.split('\n');
+            const headerLine = lines[0];
+            const headers = headerLine.split(',').map(h => h.replace(/"/g, '').trim());
+
+            console.log(`   📋 原始记录数: ${lines.length - 1}`);
+            console.log(`   📋 保留记录数: ${articles.length}`);
+
+            // 构建要保留的数据行
+            const dataRows = [];
+            
+            for (const article of articles) {
+                const row = {};
+                
+                // 从原始行数据构建新行
+                if (article._rawRow) {
+                    // 使用原始行数据作为基础
+                    for (const header of headers) {
+                        if (article._rawRow[header] !== undefined) {
+                            row[header] = article._rawRow[header];
+                        } else {
+                            row[header] = '';
+                        }
+                    }
+                } else {
+                    // 如果没有原始行数据，从article对象构建
+                    for (const header of headers) {
+                        row[header] = this.mapArticleFieldToHeader(article, header) || '';
+                    }
+                }
+                
+                dataRows.push(row);
+            }
+
+            // 创建CSV写入器
+            const csvWriter = createCsvWriter({
+                path: filePath,
+                header: headers.map(h => ({ id: h, title: h })),
+                encoding: 'utf8'
+            });
+
+            // 写入更新后的数据
+            await csvWriter.writeRecords(dataRows);
+
+            const deletedCount = (lines.length - 1) - articles.length;
+            
+            return {
+                success: true,
+                message: `CSV文件重写成功，删除了 ${deletedCount} 条已发布记录`,
+                deletedCount,
+                remainingCount: articles.length
+            };
+
+        } catch (error) {
+            throw new Error(`CSV文件重写失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 重写Excel文件（用于删除已发布记录）
+     * @param {string} filePath - Excel文件路径
+     * @param {Array} articles - 要保留的文章数组
+     * @returns {Promise<object>} 更新结果
+     */
+    async rewriteExcel(filePath, articles) {
+        try {
+            // 读取原始工作簿获取表头
+            const originalWorkbook = XLSX.readFile(filePath);
+            const sheetName = originalWorkbook.SheetNames[0];
+            const originalWorksheet = originalWorkbook.Sheets[sheetName];
+            
+            // 获取表头信息
+            const range = XLSX.utils.decode_range(originalWorksheet['!ref']);
+            const headers = [];
+            for (let col = range.s.c; col <= range.e.c; col++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+                const cell = originalWorksheet[cellAddress];
+                headers.push(cell ? cell.v : '');
+            }
+
+            const originalRowCount = range.e.r; // 原始行数（包括表头）
+
+            // 构建要保留的数据
+            const dataToKeep = [];
+            
+            for (const article of articles) {
+                const row = {};
+                
+                if (article._rawRow) {
+                    // 使用原始行数据
+                    for (const header of headers) {
+                        row[header] = article._rawRow[header] || '';
+                    }
+                } else {
+                    // 从article对象构建
+                    for (const header of headers) {
+                        row[header] = this.mapArticleFieldToHeader(article, header) || '';
+                    }
+                }
+                
+                dataToKeep.push(row);
+            }
+
+            // 创建新的工作表
+            const newWorksheet = XLSX.utils.json_to_sheet(dataToKeep, { header: headers });
+
+            // 创建新的工作簿
+            const newWorkbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, sheetName);
+
+            // 写入文件
+            XLSX.writeFile(newWorkbook, filePath);
+
+            const deletedCount = originalRowCount - articles.length;
+
+            return {
+                success: true,
+                message: `Excel文件重写成功，删除了 ${deletedCount} 条已发布记录`,
+                deletedCount,
+                remainingCount: articles.length
+            };
+
+        } catch (error) {
+            throw new Error(`Excel文件重写失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 将文章字段映射到表头
+     * @param {object} article - 文章对象
+     * @param {string} header - 表头名称
+     * @returns {string} 映射的值
+     */
+    mapArticleFieldToHeader(article, header) {
+        const lowerHeader = header.toLowerCase();
+        
+        // 标题映射
+        if (lowerHeader.includes('title') || lowerHeader.includes('标题')) {
+            return article.title || '';
+        }
+        
+        // 描述映射
+        if (lowerHeader.includes('description') || lowerHeader.includes('描述')) {
+            return article.description || '';
+        }
+        
+        // 标签映射
+        if (lowerHeader.includes('tags') || lowerHeader.includes('标签')) {
+            return Array.isArray(article.tags) ? article.tags.join(',') : (article.tags || '');
+        }
+        
+        // 文件路径映射
+        if (lowerHeader.includes('path') || lowerHeader.includes('路径') || 
+            lowerHeader.includes('发布内容') || lowerHeader.includes('md')) {
+            return article.filePath || article.relativePath || '';
+        }
+        
+        // 作者映射
+        if (lowerHeader.includes('author') || lowerHeader.includes('作者')) {
+            return article.author || '';
+        }
+        
+        // DEV.to状态映射
+        if (lowerHeader.includes('devto')) {
+            return article.devto_published || false;
+        }
+        
+        // Hashnode状态映射
+        if (lowerHeader.includes('hashnode')) {
+            return article.hashnode_published || false;
+        }
+        
+        // 默认返回空字符串
+        return '';
+    }
+
+    /**
      * 更新CSV文件
      * @param {string} filePath - CSV文件路径
      * @param {Array} articles - 文章数组

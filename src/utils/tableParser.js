@@ -4,10 +4,11 @@ const csv = require('csv-parser');
 const { parse } = require('csv-parse');
 const XLSX = require('xlsx');
 const { createReadStream } = require('fs');
+const MarkdownReader = require('./markdownReader'); // 新增
 
 /**
  * 表格解析器 - 支持CSV和Excel格式
- * 处理包含文章信息的表格文件
+ * 处理包含文章信息的表格文件，支持从Markdown文件加载内容
  */
 class TableParser {
     constructor() {
@@ -21,7 +22,7 @@ class TableParser {
             cover_image: ['cover_image', '封面图片', 'Cover Image', 'coverImage', 'image', '图片'],
             canonical_url: ['canonical_url', '原文链接', 'Canonical URL', 'canonicalUrl', 'url', '链接'],
             series: ['series', '系列', 'Series', '系列名称'],
-            file_path: ['file_path', '文件路径', 'File Path', 'filePath', 'path', '路径'],
+            file_path: ['file_path', '文件路径', 'File Path', 'filePath', 'path', '路径', 'md文件', 'markdown文件', '发布内容'],
             platform_devto: ['devto_published', 'devto_状态', 'devto_url', 'DevTo Published', 'dev_to'],
             platform_hashnode: ['hashnode_published', 'hashnode_状态', 'hashnode_url', 'Hashnode Published'],
             author: ['author', '作者', 'Author', '提出人'],
@@ -29,6 +30,17 @@ class TableParser {
             channels: ['channels', '渠道', '渠道&账号', 'Channels'],
             publish_complete: ['publish_complete', '发布完成', 'Publish Complete', '完成状态']
         };
+
+        this.markdownReader = new MarkdownReader(); // 新增：初始化Markdown读取器
+    }
+
+    /**
+     * 解析表格文件（主入口方法）
+     * @param {string} filePath - 表格文件路径
+     * @returns {Promise<Array>} 解析后的文章数据数组
+     */
+    async parseTableFile(filePath) {
+        return await this.parseFile(filePath);
     }
 
     /**
@@ -73,7 +85,7 @@ class TableParser {
                 .pipe(csv())
                 .on('data', (row) => {
                     try {
-                        const article = this.processRow(row);
+                        const article = this.processRow(row, filePath); // 传递filePath参数
                         if (article) {
                             results.push(article);
                         }
@@ -81,9 +93,15 @@ class TableParser {
                         console.warn(`处理行数据时出错:`, error.message);
                     }
                 })
-                .on('end', () => {
-                    console.log(`✅ CSV文件解析完成，共解析 ${results.length} 条记录`);
-                    resolve(results);
+                .on('end', async () => {
+                    try {
+                        // 处理需要从Markdown文件加载内容的文章
+                        const processedResults = await this.loadMarkdownContent(results, filePath);
+                        console.log(`✅ CSV文件解析完成，共解析 ${processedResults.length} 条记录`);
+                        resolve(processedResults);
+                    } catch (error) {
+                        reject(error);
+                    }
                 })
                 .on('error', reject);
         });
@@ -115,7 +133,7 @@ class TableParser {
                     let record;
                     while ((record = this.read()) !== null) {
                         try {
-                            const article = self.processRow(record);
+                            const article = self.processRow(record, filePath); // 传递filePath参数
                             if (article) {
                                 results.push(article);
                             }
@@ -124,9 +142,15 @@ class TableParser {
                         }
                     }
                 })
-                .on('end', () => {
-                    console.log(`✅ CSV文件解析完成（多行模式），共解析 ${results.length} 条记录`);
-                    resolve(results);
+                .on('end', async () => {
+                    try {
+                        // 处理需要从Markdown文件加载内容的文章
+                        const processedResults = await self.loadMarkdownContent(results, filePath);
+                        console.log(`✅ CSV文件解析完成（多行模式），共解析 ${processedResults.length} 条记录`);
+                        resolve(processedResults);
+                    } catch (error) {
+                        reject(error);
+                    }
                 })
                 .on('error', reject);
         });
@@ -149,7 +173,7 @@ class TableParser {
             const results = [];
             for (const row of rawData) {
                 try {
-                    const article = this.processRow(row);
+                    const article = this.processRow(row, filePath); // 传递filePath参数
                     if (article) {
                         results.push(article);
                     }
@@ -158,8 +182,10 @@ class TableParser {
                 }
             }
 
-            console.log(`✅ Excel文件解析完成，共解析 ${results.length} 条记录`);
-            return results;
+            // 处理需要从Markdown文件加载内容的文章
+            const processedResults = await this.loadMarkdownContent(results, filePath);
+            console.log(`✅ Excel文件解析完成，共解析 ${processedResults.length} 条记录`);
+            return processedResults;
 
         } catch (error) {
             throw new Error(`Excel文件解析失败: ${error.message}`);
@@ -169,22 +195,23 @@ class TableParser {
     /**
      * 处理单行数据，将其转换为文章对象
      * @param {object} row - 行数据
+     * @param {string} tableFilePath - 表格文件路径（用于确定articles目录）
      * @returns {object|null} 文章对象或null
      */
-    processRow(row) {
+    processRow(row, tableFilePath) {
         // 查找列名映射
         const columns = this.findColumns(row);
 
         // 检查必需字段
-        if (!columns.title) {
-            console.warn('跳过无标题的行:', Object.keys(row).slice(0, 3));
+        if (!columns.title && !columns.file_path) {
+            console.warn('跳过无标题且无文件路径的行:', Object.keys(row).slice(0, 3));
             return null;
         }
 
         const article = {
-            // 基本信息
+            // 基本信息（如果有直接内容则使用，否则标记需要从文件加载）
             title: this.cleanValue(row[columns.title]),
-            content: this.cleanValue(row[columns.content]) || '',
+            content: this.cleanValue(row[columns.content]) || '', // 如果没有直接内容，稍后从文件加载
             description: this.cleanValue(row[columns.description]) || '',
 
             // 标签处理
@@ -206,17 +233,100 @@ class TableParser {
             publishComplete: this.parseBoolean(row[columns.publish_complete], false),
 
             // 平台发布状态
-            platformStatus: {
-                devto: this.parsePlatformStatus(row[columns.platform_devto]),
-                hashnode: this.parsePlatformStatus(row[columns.platform_hashnode])
-            },
+            devto_published: this.parsePlatformStatus(row[columns.platform_devto]).published ?
+                (row[columns.platform_devto] || '是') : false,
+            hashnode_published: this.parsePlatformStatus(row[columns.platform_hashnode]).published ?
+                (row[columns.platform_hashnode] || '是') : false,
 
-            // 原始行数据（用于更新）
+            // 内部使用字段
+            _needsMarkdownLoad: !this.cleanValue(row[columns.content]) && this.cleanValue(row[columns.file_path]), // 标记是否需要从MD文件加载内容
+            _tableFilePath: tableFilePath, // 保存表格文件路径
             _rawRow: row,
             _columns: columns
         };
 
         return article;
+    }
+
+    /**
+     * 从Markdown文件加载内容
+     * @param {Array} articles - 文章数组
+     * @param {string} tableFilePath - 表格文件路径
+     * @returns {Promise<Array>} 加载内容后的文章数组
+     */
+    async loadMarkdownContent(articles, tableFilePath) {
+        const articlesDir = path.dirname(tableFilePath); // 使用表格文件所在目录作为articles目录
+        const processedArticles = [];
+
+        for (const article of articles) {
+            if (article._needsMarkdownLoad && article.filePath) {
+                try {
+                    console.log(`📖 从Markdown文件加载内容: ${article.filePath}`);
+
+                    // 使用MarkdownReader读取文件内容
+                    const markdownArticle = await this.markdownReader.readMarkdownFile(
+                        article.filePath,
+                        articlesDir
+                    );
+
+                    // 合并数据：内容字段以MD文件为准，配置字段以CSV为准
+                    const mergedArticle = {
+                        // 第一层：MD文件的所有数据作为基础
+                        ...markdownArticle,
+
+                        // 第二层：CSV中的配置字段覆盖（保留发布配置、作者等）
+                        // 但内容相关字段让MD文件保持优先
+                        ...(function () {
+                            const csvData = { ...article };
+                            // 删除内容相关字段，让MD文件的保持优先
+                            delete csvData.title;      // 标题用MD文件的
+                            delete csvData.content;    // 内容用MD文件的
+                            delete csvData.description; // 描述优先用MD文件的，除非MD文件没有
+                            delete csvData.tags;       // 标签优先用MD文件的，除非MD文件没有
+                            return csvData;
+                        })(),
+
+                        // 第三层：智能合并逻辑 - 优先使用MD文件，CSV作为补充
+                        title: markdownArticle.title || article.title,
+                        content: markdownArticle.content || article.content,
+
+                        // 描述和标签：如果MD文件有就用MD的，否则用CSV的
+                        description: markdownArticle.description || article.description,
+                        tags: (markdownArticle.tags && markdownArticle.tags.length > 0) ?
+                            markdownArticle.tags : article.tags,
+
+                        // 作者：CSV优先，如果CSV没有则用MD文件的
+                        author: article.author || markdownArticle.author,
+
+                        // 保留MD文件的原始信息
+                        markdownData: {
+                            frontMatter: markdownArticle.frontMatter,
+                            fileName: markdownArticle.fileName,
+                            fileSize: markdownArticle.fileSize,
+                            lastModified: markdownArticle.lastModified
+                        }
+                    };
+
+                    // 清理内部标记字段
+                    delete mergedArticle._needsMarkdownLoad;
+
+                    processedArticles.push(mergedArticle);
+
+                } catch (error) {
+                    console.warn(`⚠️ 无法加载Markdown文件 ${article.filePath}: ${error.message}`);
+
+                    // 即使加载失败，也保留原有的文章数据
+                    delete article._needsMarkdownLoad;
+                    processedArticles.push(article);
+                }
+            } else {
+                // 不需要从MD文件加载内容的文章直接添加
+                delete article._needsMarkdownLoad;
+                processedArticles.push(article);
+            }
+        }
+
+        return processedArticles;
     }
 
     /**
@@ -341,7 +451,9 @@ class TableParser {
             const missing = [];
 
             // 检查必需字段
-            if (!firstRow.title) missing.push('标题(title)');
+            if (!firstRow.title && !firstRow.filePath) {
+                missing.push('标题(title)或文件路径(file_path)');
+            }
             if (!firstRow.content && !firstRow.filePath) {
                 missing.push('内容(content)或文件路径(file_path)');
             }
@@ -351,7 +463,7 @@ class TableParser {
                     valid: false,
                     message: `缺少必需字段: ${missing.join(', ')}`,
                     suggestions: [
-                        '确保表格包含标题列',
+                        '确保表格包含标题列或文件路径列',
                         '如果没有content列，请提供file_path列指向Markdown文件',
                         '查看示例模板了解正确格式'
                     ]
@@ -385,11 +497,17 @@ class TableParser {
     getUnpublishedArticles(articles) {
         return articles.filter(article => {
             // 检查是否所有平台都已发布
-            const devtoPublished = article.platformStatus?.devto?.published || false;
-            const hashnodePublished = article.platformStatus?.hashnode?.published || false;
+            const devtoNotPublished = !article.devto_published ||
+                article.devto_published === false ||
+                article.devto_published === 'false' ||
+                article.devto_published === '否';
 
-            // 如果任一平台未发布，则认为文章未完全发布
-            return !devtoPublished || !hashnodePublished;
+            const hashnodeNotPublished = !article.hashnode_published ||
+                article.hashnode_published === false ||
+                article.hashnode_published === 'false' ||
+                article.hashnode_published === '否';
+
+            return devtoNotPublished || hashnodeNotPublished;
         });
     }
 }

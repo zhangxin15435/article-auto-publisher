@@ -59,14 +59,20 @@ async function publishToHashnode(article, config, options = {}) {
         contentMarkdown: article.content,
         publicationId: publicationId,
         tags: tags.map(tag => ({ slug: tag.toLowerCase().replace(/[^a-z0-9]/g, '-'), name: tag })),
-        subtitle: article.description || undefined,
+        subtitle: article.description ?
+            (article.description.length > 250 ?
+                article.description.substring(0, 247) + '...' :
+                article.description) : undefined,
         coverImageOptions: article.coverImage ? {
             coverImageURL: article.coverImage
         } : undefined,
         originalArticleURL: article.canonicalUrl || undefined,
         metaTags: {
             title: article.title,
-            description: article.description || ''
+            description: article.description ?
+                (article.description.length > 160 ?
+                    article.description.substring(0, 157) + '...' :
+                    article.description) : ''
         }
     };
 
