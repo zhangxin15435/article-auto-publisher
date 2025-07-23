@@ -1,0 +1,109 @@
+name: 🔄 内容库CSV文件自动提取
+
+on:
+  # 当articles目录有变化时触发
+  push:
+    paths:
+      - 'articles/内容库*.csv'
+      - 'articles/*内容库*.csv'
+  
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      force_process:
+        description: '强制处理所有内容库文件'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  extract-content-db:
+    name: 📊 提取内容库数据
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📦 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 🔧 安装依赖
+        run: npm ci
+
+      - name: 🔍 检查内容库文件
+        id: check_files
+        run: |
+          if ls articles/内容库*.csv 2>/dev/null || ls articles/*内容库*.csv 2>/dev/null; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "📁 发现内容库CSV文件"
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ 未发现内容库CSV文件"
+          fi
+
+      - name: 📊 提取内容库数据
+        if: steps.check_files.outputs.found == 'true' || github.event.inputs.force_process == 'true'
+        run: |
+          echo "🚀 开始提取内容库数据..."
+          node scripts/extract-content-db.js
+
+      - name: 📝 提交更改
+        if: steps.check_files.outputs.found == 'true' || github.event.inputs.force_process == 'true'
+        run: |
+          # 配置Git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # 检查是否有更改
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "📝 发现更改，准备提交..."
+            
+            # 添加更改的文件
+            git add articles/ready-to-publish.csv
+            git add articles/processed-backups/ 2>/dev/null || true
+            
+            # 提交更改
+            git commit -m "🤖 自动提取内容库CSV数据
+            
+            ✨ 处理完成:
+            - 📊 提取文章数据到ready-to-publish.csv
+            - 🗑️ 清理已处理的内容库文件  
+            - 💾 创建备份文件
+            - ⏰ 时间: $(date '+%Y-%m-%d %H:%M:%S UTC')" || echo "无需提交更改"
+            
+            # 推送更改
+            git push
+            echo "✅ 更改已推送到仓库"
+          else
+            echo "ℹ️ 没有检测到更改"
+          fi
+
+      - name: 📋 生成处理报告
+        if: steps.check_files.outputs.found == 'true' || github.event.inputs.force_process == 'true'
+        run: |
+          echo "## 📊 内容库处理报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 处理状态" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "articles/ready-to-publish.csv" ]; then
+            article_count=$(tail -n +2 articles/ready-to-publish.csv | wc -l)
+            echo "- ✅ ready-to-publish.csv 已更新" >> $GITHUB_STEP_SUMMARY
+            echo "- 📝 当前发布队列: ${article_count} 篇文章" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -d "articles/processed-backups" ]; then
+            backup_count=$(ls articles/processed-backups/ | wc -l)
+            echo "- 💾 备份文件: ${backup_count} 个" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 下一步" >> $GITHUB_STEP_SUMMARY
+          echo "- 🤖 系统将在定时任务中自动发布文章" >> $GITHUB_STEP_SUMMARY
+          echo "- ⏰ 发布时间: 每天 6:00, 12:00, 18:00, 24:00 (北京时间)" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 可在Actions页面查看发布状态" >> $GITHUB_STEP_SUMMARY 

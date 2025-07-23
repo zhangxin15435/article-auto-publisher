@@ -148,7 +148,24 @@ jobs:
             echo "⚠️ 未发现CSV文件"
           fi
 
-      - name: 🚀 执行自动CSV内容发布
+      - name: 🔧 安装依赖
+        run: npm ci
+
+      - name: 🔍 提取内容库CSV文件
+        run: |
+          echo "🚀 检查并处理内容库CSV文件..."
+          node scripts/extract-content-db.js
+          
+          # 如果有更新，提交更改
+          if [ -n "$(git status --porcelain)" ]; then
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add articles/ready-to-publish.csv articles/processed-backups/
+            git commit -m "🤖 自动提取内容库CSV文件 $(date '+%Y-%m-%d %H:%M:%S')" || exit 0
+            git push
+          fi
+
+      - name: 🚀 执行自动发布
         if: steps.check_articles.outputs.found_csv == 'true'
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
