@@ -160,9 +160,28 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
-            git add articles/ready-to-publish.csv articles/processed-backups/
-            git commit -m "🤖 自动提取内容库CSV文件 $(date '+%Y-%m-%d %H:%M:%S')" || exit 0
-            git push
+            
+            # 安全地添加文件（只添加存在的文件）
+            if [ -f "articles/ready-to-publish.csv" ]; then
+              echo "✅ 发现ready-to-publish.csv，添加到提交"
+              git add articles/ready-to-publish.csv
+            else
+              echo "ℹ️ ready-to-publish.csv不存在，跳过添加"
+            fi
+            
+            # 添加processed-backups目录（如果存在）
+            if [ -d "articles/processed-backups" ]; then
+              echo "✅ 添加processed-backups目录"
+              git add articles/processed-backups/
+            fi
+            
+            # 检查是否有文件被添加到暂存区
+            if [ -n "$(git diff --cached --name-only)" ]; then
+              git commit -m "🤖 自动提取内容库CSV文件 $(date '+%Y-%m-%d %H:%M:%S')" || exit 0
+              git push
+            else
+              echo "ℹ️ 没有文件需要提交"
+            fi
           fi
 
       - name: 🚀 执行自动发布
