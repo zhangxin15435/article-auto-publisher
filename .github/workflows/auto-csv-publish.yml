@@ -1,0 +1,332 @@
+name: 🤖 自动CSV内容发布
+
+on:
+  schedule:
+    # 每天6点、12点、18点、24点自动执行（北京时间）
+    # 对应UTC时间：22点、4点、10点、16点（前一天/当天）
+    - cron: '0 22 * * *'    # 北京时间 6:00
+    - cron: '0 4 * * *'     # 北京时间 12:00  
+    - cron: '0 10 * * *'    # 北京时间 18:00
+    - cron: '0 16 * * *'    # 北京时间 24:00
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '测试模式（不实际发布）'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+env:
+  NODE_VERSION: '18'
+  TIMEZONE: 'Asia/Shanghai'
+
+jobs:
+  auto-csv-publish:
+    runs-on: ubuntu-latest
+    name: 自动CSV内容发布
+
+    steps:
+      - name: 📚 检出代码仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🟢 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📦 安装 pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: 📥 安装项目依赖
+        run: |
+          echo "📦 安装项目依赖..."
+          if [ -f "pnpm-lock.yaml" ]; then
+            echo "✅ 发现pnpm-lock.yaml，使用frozen-lockfile模式"
+            pnpm install --frozen-lockfile
+          else
+            echo "⚠️ 未发现pnpm-lock.yaml，使用普通安装模式"
+            pnpm install --no-frozen-lockfile
+          fi
+          echo "✅ 依赖安装完成"
+
+      - name: ⚙️ 配置环境变量
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          HASHNODE_API_KEY: ${{ secrets.HASHNODE_API_KEY }}
+          HASHNODE_PUBLICATION_ID: ${{ secrets.HASHNODE_PUBLICATION_ID }}
+        run: |
+          echo "⚙️ 配置环境变量..."
+          echo "# 多平台文章发布工具 - 环境变量配置" > .env
+          echo "" >> .env
+          echo "# DEV.to 配置" >> .env
+          echo "DEVTO_API_KEY=${DEVTO_API_KEY}" >> .env
+          echo "" >> .env
+          echo "# Hashnode 配置" >> .env
+          echo "HASHNODE_API_KEY=${HASHNODE_API_KEY}" >> .env
+          echo "HASHNODE_PUBLICATION_ID=${HASHNODE_PUBLICATION_ID}" >> .env
+          echo "" >> .env
+          echo "# 其他配置" >> .env
+          echo "DEFAULT_PUBLISH_DELAY=3000" >> .env
+          echo "DEBUG=false" >> .env
+          echo "TIMEZONE=${{ env.TIMEZONE }}" >> .env
+          echo "LOG_LEVEL=info" >> .env
+          echo "✅ 环境变量配置完成"
+
+      - name: 🔍 检查平台配置状态
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          HASHNODE_API_KEY: ${{ secrets.HASHNODE_API_KEY }}
+          HASHNODE_PUBLICATION_ID: ${{ secrets.HASHNODE_PUBLICATION_ID }}
+        run: |
+          echo "🔧 检查API密钥配置状态..."
+          
+          DEVTO_STATUS="❌ 未配置"
+          HASHNODE_STATUS="❌ 未配置"
+          
+          if [ -n "$DEVTO_API_KEY" ]; then
+            DEVTO_STATUS="✅ 已配置"
+            echo "DEVTO_CONFIGURED=true" >> $GITHUB_ENV
+          else
+            echo "DEVTO_CONFIGURED=false" >> $GITHUB_ENV
+          fi
+          
+          if [ -n "$HASHNODE_API_KEY" ] && [ -n "$HASHNODE_PUBLICATION_ID" ]; then
+            HASHNODE_STATUS="✅ 已配置"
+            echo "HASHNODE_CONFIGURED=true" >> $GITHUB_ENV
+          else
+            echo "HASHNODE_CONFIGURED=false" >> $GITHUB_ENV
+          fi
+          
+          echo "📊 平台配置状态:"
+          echo "   DEV.to: $DEVTO_STATUS"
+          echo "   Hashnode: $HASHNODE_STATUS"
+          
+          # 检查是否至少配置了一个平台
+          if [ "$DEVTO_CONFIGURED" = "false" ] && [ "$HASHNODE_CONFIGURED" = "false" ]; then
+            echo "❌ 错误: 没有配置任何发布平台的API密钥"
+            echo "💡 请在GitHub Secrets中配置至少一个平台的API密钥"
+            exit 1
+          fi
+
+      - name: 📂 检查articles目录和CSV文件
+        id: check_articles
+        run: |
+          echo "📂 检查articles目录和CSV文件..."
+          
+          if [ ! -d "articles" ]; then
+            echo "❌ articles目录不存在"
+            echo "found_csv=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # 查找CSV文件
+          CSV_FILES=$(find articles -name "*.csv" -type f 2>/dev/null || true)
+          
+          if [ -n "$CSV_FILES" ]; then
+            echo "found_csv=true" >> $GITHUB_OUTPUT
+            echo "✅ 发现CSV文件:"
+            echo "$CSV_FILES" | while read -r file; do
+              if [ -n "$file" ]; then
+                echo "   📄 $file"
+                # 显示文件基本信息
+                if [ -f "$file" ]; then
+                  LINE_COUNT=$(wc -l < "$file" 2>/dev/null || echo "0")
+                  echo "      📊 行数: $LINE_COUNT"
+                fi
+              fi
+            done
+          else
+            echo "found_csv=false" >> $GITHUB_OUTPUT
+            echo "⚠️ 未发现CSV文件"
+          fi
+
+      - name: 🔧 安装依赖
+        run: npm ci
+
+      - name: 🔍 提取内容库CSV文件
+        run: |
+          echo "🚀 检查并处理内容库CSV文件..."
+          node scripts/extract-content-db.js
+          
+          # 如果有更新，提交更改
+          if [ -n "$(git status --porcelain)" ]; then
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add articles/ready-to-publish.csv articles/processed-backups/
+            git commit -m "🤖 自动提取内容库CSV文件 $(date '+%Y-%m-%d %H:%M:%S')" || exit 0
+            git push
+          fi
+
+      - name: 🚀 执行自动发布
+        if: steps.check_articles.outputs.found_csv == 'true'
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          HASHNODE_API_KEY: ${{ secrets.HASHNODE_API_KEY }}
+          HASHNODE_PUBLICATION_ID: ${{ secrets.HASHNODE_PUBLICATION_ID }}
+        run: |
+          echo "🚀 开始自动CSV内容发布..."
+          
+          # 显示执行信息
+          CURRENT_TIME=$(date -d '+8 hours' '+%Y-%m-%d %H:%M:%S')
+          echo "⏰ 执行时间: $CURRENT_TIME (北京时间)"
+          echo "🔄 触发方式: ${{ github.event_name }}"
+          
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "🧪 测试模式: ${{ github.event.inputs.dry_run }}"
+          fi
+          
+          # 确保环境变量正确加载
+          export DEVTO_API_KEY="${DEVTO_API_KEY}"
+          export HASHNODE_API_KEY="${HASHNODE_API_KEY}"
+          export HASHNODE_PUBLICATION_ID="${HASHNODE_PUBLICATION_ID}"
+          
+          # 执行自动发布脚本
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "🧪 测试模式: 只查找未发布内容，不执行实际发布"
+            # 这里可以添加测试模式的逻辑
+            node scripts/auto-csv-publisher.js --dry-run || echo "⚠️ 测试模式执行完成"
+          else
+            echo "🚀 正式发布模式"
+            node scripts/auto-csv-publisher.js
+          fi
+
+      - name: 📝 提交更新后的CSV文件
+        if: steps.check_articles.outputs.found_csv == 'true'
+        run: |
+          echo "📝 检查CSV文件更新..."
+          
+          # 配置Git用户信息
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action - Auto CSV Publisher"
+          
+          # 检查是否有文件变更
+          if git diff --quiet; then
+            echo "ℹ️ 没有文件需要提交"
+          else
+            echo "📄 发现文件变更，准备提交..."
+            
+            # 添加变更的CSV文件
+            git add articles/*.csv 2>/dev/null || true
+            
+            # 创建提交信息
+            CURRENT_TIME=$(date -d '+8 hours' '+%Y-%m-%d %H:%M:%S')
+            COMMIT_MSG="🤖 自动发布并删除已发布内容 - $CURRENT_TIME"
+            
+            # 提交变更
+            if git commit -m "$COMMIT_MSG"; then
+              echo "✅ 变更已提交"
+              
+              # 推送到远程仓库
+              if git push; then
+                echo "✅ 变更已推送到远程仓库"
+              else
+                echo "⚠️ 推送失败，可能需要检查权限设置"
+                exit 1
+              fi
+            else
+              echo "ℹ️ 没有新的变更需要提交"
+            fi
+          fi
+
+      - name: 📊 生成发布报告
+        if: always()
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          HASHNODE_API_KEY: ${{ secrets.HASHNODE_API_KEY }}
+          HASHNODE_PUBLICATION_ID: ${{ secrets.HASHNODE_PUBLICATION_ID }}
+        run: |
+          echo "## 🤖 自动CSV内容发布报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚙️ 执行信息" >> $GITHUB_STEP_SUMMARY
+          echo "- **执行时间**: $(date -d '+8 hours' '+%Y-%m-%d %H:%M:%S') (北京时间)" >> $GITHUB_STEP_SUMMARY
+          echo "- **触发方式**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **工作流**: 自动CSV内容发布" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🎯 手动执行参数" >> $GITHUB_STEP_SUMMARY
+            echo "- **测试模式**: ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📈 平台配置状态" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$DEVTO_API_KEY" ]; then
+            echo "- ✅ **DEV.to**: 已配置" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ **DEV.to**: 未配置" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -n "$HASHNODE_API_KEY" ] && [ -n "$HASHNODE_PUBLICATION_ID" ]; then
+            echo "- ✅ **Hashnode**: 已配置" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ **Hashnode**: 未配置" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📂 CSV文件状态" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_articles.outputs.found_csv }}" = "true" ]; then
+            echo "- ✅ **发现CSV文件**: 执行自动发布流程" >> $GITHUB_STEP_SUMMARY
+            
+            # 显示articles目录中的CSV文件
+            if [ -d "articles" ]; then
+              CSV_FILES=$(find articles -name "*.csv" -type f 2>/dev/null | head -5)
+              if [ -n "$CSV_FILES" ]; then
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "**处理的文件:**" >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+                echo "$CSV_FILES" >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          else
+            echo "- ⚠️ **未发现CSV文件**: 没有执行发布操作" >> $GITHUB_STEP_SUMMARY
+            echo "  - 请确保articles目录中包含CSV文件" >> $GITHUB_STEP_SUMMARY
+            echo "  - CSV文件应包含待发布的文章内容" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⏰ 下次执行时间" >> $GITHUB_STEP_SUMMARY
+          echo "自动执行时间（北京时间）：" >> $GITHUB_STEP_SUMMARY
+          echo "- 🕕 **6:00** (UTC 22:00 前一天)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🕕 **18:00** (UTC 10:00)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🕛 **12:00** (UTC 4:00)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🕛 **24:00** (UTC 16:00)" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 💡 使用提示" >> $GITHUB_STEP_SUMMARY
+          echo "- 📋 **CSV格式**: 确保CSV文件包含 \`title\` 和 \`content\` 列" >> $GITHUB_STEP_SUMMARY
+          echo "- 🗑️ **自动清理**: 成功发布的内容会自动从CSV文件中删除" >> $GITHUB_STEP_SUMMARY
+          echo "- 🧪 **测试模式**: 使用手动触发的测试模式来验证配置" >> $GITHUB_STEP_SUMMARY
+          echo "- 📚 **文档**: 查看 [README.md](README.md) 了解详细使用方法" >> $GITHUB_STEP_SUMMARY
+
+      - name: ⚠️ 处理失败情况
+        if: failure()
+        run: |
+          echo "❌ 自动CSV内容发布过程中发生错误"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## ❌ 发布失败" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "自动CSV内容发布过程中发生错误，请检查以下项目：" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 故障排除清单" >> $GITHUB_STEP_SUMMARY
+          echo "1. **API密钥配置**: 确保在 Settings > Secrets 中正确配置了API密钥" >> $GITHUB_STEP_SUMMARY
+          echo "   - \`DEVTO_API_KEY\`: DEV.to平台的API密钥" >> $GITHUB_STEP_SUMMARY
+          echo "   - \`HASHNODE_API_KEY\`: Hashnode平台的API密钥" >> $GITHUB_STEP_SUMMARY
+          echo "   - \`HASHNODE_PUBLICATION_ID\`: Hashnode的Publication ID" >> $GITHUB_STEP_SUMMARY
+          echo "2. **CSV文件格式**: 确保CSV文件格式正确，包含必需的列" >> $GITHUB_STEP_SUMMARY
+          echo "3. **文件编码**: 确保CSV文件使用UTF-8编码" >> $GITHUB_STEP_SUMMARY
+          echo "4. **权限设置**: 确保GitHub Token有仓库写入权限" >> $GITHUB_STEP_SUMMARY
+          echo "5. **平台状态**: 检查各平台API服务是否正常" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📞 获取帮助" >> $GITHUB_STEP_SUMMARY
+          echo "- 查看详细错误日志了解具体失败原因" >> $GITHUB_STEP_SUMMARY
+          echo "- 使用手动触发的测试模式来调试问题" >> $GITHUB_STEP_SUMMARY
+          echo "- 参考项目文档中的故障排除部分" >> $GITHUB_STEP_SUMMARY 

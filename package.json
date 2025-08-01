@@ -1,0 +1,44 @@
+{
+    "name": "multi-platform-article-publisher",
+    "version": "1.0.0",
+    "description": "自动发布文章到多个平台的工具",
+    "main": "index.js",
+    "scripts": {
+        "publish": "node src/publisher.js",
+        "publish-draft": "node src/publisher.js --draft",
+        "auto-csv-publish": "node scripts/auto-csv-publisher.js",
+        "create-template": "node templates/create-excel-template.js",
+        "test": "jest",
+        "github-test": "node scripts/test-github-actions.js",
+        "github-setup": "node scripts/setup-github-secrets.js",
+        "github-extract": "node scripts/extract-github-secrets.js"
+    },
+    "keywords": [
+        "blog",
+        "publishing",
+        "automation",
+        "hashnode",
+        "devto",
+        "medium"
+    ],
+    "author": "Your Name",
+    "license": "MIT",
+    "dependencies": {
+        "axios": "^1.10.0",
+        "chalk": "^4.1.2",
+        "csv-parse": "^6.1.0",
+        "csv-parser": "^3.2.0",
+        "csv-stringify": "^6.6.0",
+        "csv-writer": "^1.6.0",
+        "dotenv": "^16.6.1",
+        "fast-csv": "^5.0.2",
+        "gray-matter": "^4.0.3",
+        "iconv-lite": "^0.6.3",
+        "ora": "^5.4.1",
+        "xlsx": "^0.18.5"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0",
+        "nodemon": "^3.0.1"
+    }
+}
